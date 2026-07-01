@@ -12,7 +12,7 @@
 
 *¿Qué hace que algunas personas generen costos médicos 4 veces mayores que otras? Este proyecto lo responde con datos.*
 
-<!-- IMAGEN SUGERIDA: images/cover_banner.png — banner con el gráfico de scatter coloreado por fumador -->
+<img src="https://raw.githubusercontent.com/EmiiFernandez/medical-cost-eda/main/images/grafico3_scatter_interaccion.png" alt="Medical Cost Analysis" width="600"/>
 
 </div>
 
@@ -136,7 +136,7 @@ rmarkdown::render("report/EDA_Southeast.Rmd")
 
 ## 📊 Resultados clave
 
-<!-- IMAGEN SUGERIDA: images/boxplot_fumador.png aquí -->
+<img src="https://raw.githubusercontent.com/EmiiFernandez/medical-cost-eda/main/images/grafico2_boxplot_fumador.png" width="600"/>
 
 ### Brecha de costos por tabaquismo
 
@@ -147,7 +147,7 @@ Los fumadores generan costos médicos promedio **4.3 veces mayores** que los no 
 | No fumadores | $8.032 | $7.345 |
 | Fumadores | $34.845 | $34.456 |
 
-<!-- IMAGEN SUGERIDA: images/correlaciones.png aquí -->
+<img src="https://raw.githubusercontent.com/EmiiFernandez/medical-cost-eda/main/images/grafico4_correlaciones.png" alt="Medical Cost Analysis" width="600"/>
 
 ### Correlaciones con costos médicos
 
@@ -159,7 +159,7 @@ Los fumadores generan costos médicos promedio **4.3 veces mayores** que los no 
 | Hijos | 0.07 | Sin efecto relevante |
 | Sexo | 0.06 | Sin efecto relevante |
 
-<!-- IMAGEN SUGERIDA: images/r2_modelos.png aquí -->
+<img src="https://raw.githubusercontent.com/EmiiFernandez/medical-cost-eda/main/images/grafico5_r2_modelos.png" alt="Medical Cost Analysis" width="600"/>
 
 ### Evolución del poder explicativo (R²)
 
@@ -174,7 +174,7 @@ Los fumadores generan costos médicos promedio **4.3 veces mayores** que los no 
 
 ## 🔍 Insight principal: la interacción fumador × IMC
 
-<!-- IMAGEN SUGERIDA: images/scatter_interaccion.png aquí — es el gráfico más importante -->
+<img src="https://raw.githubusercontent.com/EmiiFernandez/medical-cost-eda/main/images/grafico3_scatter_interaccion.png" alt="Medical Cost Analysis" width="600"/>
 
 El IMC **no actúa como predictor independiente**. Su efecto es condicional al tabaquismo:
 
