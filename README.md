@@ -224,6 +224,7 @@ Distribuido bajo la licencia MIT. Ver `LICENSE` para más información.
 
 **Emilia Fernández**
 Estudiante de Licenciatura en Ciencia de Datos · Universidad CAECE
+
 Óptica Técnica · Coordinadora Quirúrgica
 
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-Conectar-0077B5?style=flat&logo=linkedin)](https://linkedin.com/in/emiliafernandez)
