@@ -197,16 +197,6 @@ Un asegurado de la región southeast presenta costos extremos cuando combina:
 
 ---
 
-## 🔮 Posibles mejoras y trabajo futuro
-
-- [ ] Implementar modelos no lineales (Random Forest, XGBoost) para comparar con regresión lineal
-- [ ] Análisis por segmentos de edad (jóvenes / adultos / mayores)
-- [ ] Dashboard interactivo con Shiny para explorar los datos
-- [ ] Incorporar datos de todas las regiones en un modelo unificado con efectos fijos por región
-- [ ] Análisis de residuos más detallado para verificar supuestos del modelo lineal
-
----
-
 ## 🤝 Contribución
 
 Las contribuciones son bienvenidas. Para proponer cambios:
@@ -227,17 +217,17 @@ Distribuido bajo la licencia MIT. Ver `LICENSE` para más información.
 
 ## 👩‍💻 Autora
 
-**Olga**
-Estudiante de Licenciatura en Ciencia de Datos · CAECE
-Técnica Óptica · Coordinadora Quirúrgica · Instituto de Ojos Nano
+**Emilia Fernández**
+Estudiante de Licenciatura en Ciencia de Datos · Universidad CAECE
+Óptica Técnica · Coordinadora Quirúrgica
 
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-Conectar-0077B5?style=flat&logo=linkedin)](https://linkedin.com/in/tu-usuario)
-[![GitHub](https://img.shields.io/badge/GitHub-Perfil-181717?style=flat&logo=github)](https://github.com/tu-usuario)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Conectar-0077B5?style=flat&logo=linkedin)](https://linkedin.com/in/emiliafernandez)
+[![GitHub](https://img.shields.io/badge/GitHub-Perfil-181717?style=flat&logo=github)](https://github.com/EmiiFernandez)
 
 ---
 
 <div align="center">
 
-*Proyecto desarrollado como trabajo final de Laboratorio de Datos I · CAECE 2025*
+*Proyecto desarrollado como trabajo final de Laboratorio de Datos I · Universidad CAECE 2025*
 
 </div>
