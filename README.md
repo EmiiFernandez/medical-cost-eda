@@ -110,7 +110,7 @@ install.packages(c(
 **1. Clonar el repositorio**
 
 ```bash
-git clone https://github.com/tu-usuario/medical-cost-eda.git
+git clone https://github.com/EmiiFernandez/medical-cost-eda.git
 cd medical-cost-eda
 ```
 
