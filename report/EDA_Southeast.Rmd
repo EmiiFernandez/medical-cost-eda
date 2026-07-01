@@ -1,0 +1,441 @@
+
+---
+title: "Análisis Exploratorio de Variables que Impactan en los Costos Médicos de Asegurados en la Región Sureste de EE. UU."
+author: "Emilia Fernández"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    theme: flatly
+    highlight: tango
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo    = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.align = "center",
+  fig.width = 8,
+  fig.height = 5
+)
+```
+
+```{r librerias}
+library(tidyverse)
+library(ggplot2)
+library(corrplot)
+library(knitr)
+library(kableExtra)
+```
+
+---
+
+# Introducción
+
+## Descripción del dataset
+
+El dataset completo está compuesto por **1.338 registros** de asegurados en Estados Unidos, distribuidos en 4 regiones: northwest, northeast, southwest y southeast.
+
+Para este análisis se filtró por la **región southeast**, con una muestra total de **364 individuos**.
+
+Antes de comenzar el análisis se realizó una revisión de calidad de los datos. Se verificó que no existieran valores nulos, registros duplicados ni campos vacíos, por lo que no fue necesario realizar correcciones sobre la muestra.
+
+```{r carga-datos}
+df <- read.csv("../data/insurance.csv")
+se <- df %>% filter(region == "southeast")
+
+cat("Registros totales:", nrow(df), "\n")
+cat("Registros región southeast:", nrow(se), "\n")
+cat("Valores nulos:", sum(is.na(se)), "\n")
+cat("Registros duplicados:", sum(duplicated(se)), "\n")
+```
+
+## Variables analizadas
+
+| Variable | Descripción |
+|---|---|
+| `age` | Edad del beneficiario principal |
+| `sex` | Género (hombre, mujer) |
+| `bmi` | Índice de Masa Corporal (IMC) |
+| `children` | Número de hijos cubiertos por el seguro |
+| `smoker` | Condición de fumador |
+| `charges` | Costos médicos individuales anuales (USD) |
+| `region` | Área de residencia en EE. UU. |
+
+## Objetivo
+
+Identificar cuáles son las variables más asociadas a los costos médicos (`charges`) de los asegurados de la región southeast y comprender su comportamiento.
+
+---
+
+# Análisis Univariado
+
+## Tabla descriptiva de variables numéricas
+
+```{r tabla-descriptiva}
+tabla_desc <- se %>%
+  select(age, bmi, children, charges) %>%
+  summarise(across(everything(), list(
+    Media   = ~round(mean(.),   2),
+    Mediana = ~round(median(.), 2),
+    DesvStd = ~round(sd(.),     2),
+    CV      = ~round(sd(.) / mean(.) * 100, 2),
+    Min     = ~round(min(.), 2),
+    Q1      = ~round(quantile(., 0.25), 2),
+    Q3      = ~round(quantile(., 0.75), 2),
+    Max     = ~round(max(.), 2)
+  ))) %>%
+  pivot_longer(everything(),
+               names_to  = c("Variable", ".value"),
+               names_sep = "_") %>%
+  rename_with(toupper)
+
+kable(tabla_desc, caption = "Estadísticos descriptivos – Región Southeast") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+                full_width = FALSE)
+```
+
+## Costos médicos (charges)
+
+La variable `charges` presenta una **mediana de $9.294,13** y una **media de $14.735,41**, lo que evidencia una **asimetría positiva**: algunos individuos con costos elevados desplazan el promedio por encima de la mediana.
+
+La desviación estándar (13.971,10) y el coeficiente de variación (94.81%) reflejan un alto grado de dispersión.
+
+```{r outliers-charges}
+Q1  <- quantile(se$charges, 0.25)
+Q3  <- quantile(se$charges, 0.75)
+IQR_val <- Q3 - Q1
+lim_sup <- Q3 + 1.5 * IQR_val
+outliers <- se %>% filter(charges > lim_sup)
+
+cat("Límite superior IQR:", round(lim_sup, 2), "\n")
+cat("Outliers identificados:", nrow(outliers), "\n")
+cat("Porcentaje sobre la muestra:", round(nrow(outliers)/nrow(se)*100, 2), "%\n")
+cat("Percentil 90:", round(quantile(se$charges, 0.90), 2), "\n")
+```
+
+```{r hist-charges}
+ggplot(se, aes(x = charges)) +
+  geom_histogram(bins = 40, fill = "#1565C0", alpha = 0.8, color = "white") +
+  geom_vline(xintercept = mean(se$charges),   color = "#F5A623", linetype = "dashed", linewidth = 1) +
+  geom_vline(xintercept = median(se$charges), color = "#1E2761", linetype = "dotted", linewidth = 1) +
+  annotate("text", x = mean(se$charges)   + 1500, y = 50, label = "Media",   color = "#F5A623", size = 3.5) +
+  annotate("text", x = median(se$charges) - 1500, y = 50, label = "Mediana", color = "#1E2761", size = 3.5) +
+  scale_x_continuous(labels = scales::dollar_format()) +
+  labs(title = "Distribución de costos médicos – Región Southeast",
+       subtitle = "Asimetría positiva: la cola derecha corresponde mayormente a fumadores",
+       x = "Costos médicos (USD)", y = "Frecuencia") +
+  theme_minimal()
+```
+
+## Índice de Masa Corporal (BMI)
+
+El IMC se clasifica en las siguientes categorías:
+
+| IMC | Categoría |
+|---|---|
+| < 18.5 | Por debajo del peso |
+| 18.5 – 24.9 | Saludable |
+| 25.0 – 29.9 | Sobrepeso |
+| 30.0 – 39.9 | Obesidad |
+| > 40 | Obesidad grave |
+
+```{r imc-categorias}
+se <- se %>%
+  mutate(bmi_cat = case_when(
+    bmi < 18.5             ~ "Bajo peso",
+    bmi >= 18.5 & bmi < 25 ~ "Saludable",
+    bmi >= 25   & bmi < 30 ~ "Sobrepeso",
+    bmi >= 30   & bmi < 40 ~ "Obesidad",
+    bmi >= 40              ~ "Obesidad grave"
+  ))
+
+se %>%
+  count(bmi_cat) %>%
+  mutate(porcentaje = round(n / sum(n) * 100, 2)) %>%
+  arrange(desc(porcentaje)) %>%
+  kable(col.names = c("Categoría IMC", "N", "%"),
+        caption = "Distribución por categoría de IMC") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+```
+
+El promedio de IMC en la región southeast es **33.36**, ubicándose en la categoría de **obesidad**. El **66.76%** de la población presenta un IMC superior a 30.
+
+## Sexo (sex)
+
+```{r sexo}
+se %>%
+  count(sex) %>%
+  mutate(
+    porcentaje = round(n / sum(n) * 100, 2),
+    sex = ifelse(sex == "male", "Hombre", "Mujer")
+  ) %>%
+  kable(col.names = c("Sexo", "N", "%")) %>%
+  kable_styling(full_width = FALSE)
+```
+
+La muestra está distribuida de forma equilibrada: **51.92% hombres** y **48.08% mujeres**.
+
+## Cantidad de hijos (children)
+
+```{r hijos}
+se %>%
+  mutate(hijos_grupo = ifelse(children >= 3, "3+", as.character(children))) %>%
+  count(hijos_grupo) %>%
+  arrange(hijos_grupo) %>%
+  kable(col.names = c("Hijos", "N")) %>%
+  kable_styling(full_width = FALSE)
+```
+
+---
+
+# Análisis Bivariado
+
+## Matriz de correlación
+
+Las variables `sex` y `smoker` son categóricas y se codificaron como binarias (`sex_num`, `smoker_num`) antes de calcular las correlaciones.
+
+```{r correlacion}
+se_num <- se %>%
+  mutate(
+    smoker_num = as.numeric(smoker == "yes"),
+    sex_num    = as.numeric(sex == "male")
+  ) %>%
+  select(age, sex_num, bmi, children, smoker_num, charges)
+
+cor_matrix <- cor(se_num)
+
+corrplot(cor_matrix,
+         method  = "color",
+         type    = "upper",
+         addCoef.col = "black",
+         tl.col  = "black",
+         tl.srt  = 45,
+         col     = colorRampPalette(c("#D64045", "white", "#1565C0"))(200),
+         title   = "Matriz de correlación – Región Southeast",
+         mar     = c(0, 0, 1, 0))
+```
+
+Se observa una **correlación positiva fuerte entre `smoker_num` y `charges` (r = 0.83)**. El resto de las variables muestran correlaciones débiles.
+
+## Costos médicos según tabaquismo
+
+```{r boxplot-fumador}
+se %>%
+  mutate(smoker_label = ifelse(smoker == "yes", "Fumador", "No fumador")) %>%
+  ggplot(aes(x = smoker_label, y = charges, fill = smoker_label)) +
+  geom_boxplot(alpha = 0.7, outlier.shape = 21, outlier.fill = "white") +
+  geom_jitter(aes(color = smoker_label), width = 0.15, alpha = 0.2, size = 1) +
+  stat_summary(fun = mean, geom = "point", shape = 18, size = 4, color = "#F5A623") +
+  scale_fill_manual(values  = c("Fumador" = "#D64045", "No fumador" = "#2E8B57")) +
+  scale_color_manual(values = c("Fumador" = "#D64045", "No fumador" = "#2E8B57")) +
+  scale_y_continuous(labels = scales::dollar_format()) +
+  labs(title    = "Costos médicos según condición de fumador",
+       subtitle = "El rombo dorado indica la media por grupo",
+       x = NULL, y = "Costos médicos (USD)") +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+```{r medias-fumador}
+se %>%
+  group_by(smoker) %>%
+  summarise(
+    N       = n(),
+    Media   = dollar(round(mean(charges), 2)),
+    Mediana = dollar(round(median(charges), 2))
+  ) %>%
+  mutate(smoker = ifelse(smoker == "yes", "Fumador", "No fumador")) %>%
+  kable(col.names = c("Grupo", "N", "Costo promedio", "Costo mediano"),
+        caption = "Costos médicos por condición de fumador") %>%
+  kable_styling(full_width = FALSE)
+```
+
+El **25% de la muestra son fumadores**. Los fumadores presentan costos **4.3 veces mayores** que los no fumadores.
+
+## Costos médicos según IMC
+
+```{r regresion-imc}
+modelo_bmi <- lm(charges ~ bmi, data = se)
+cat("R² solo IMC:", round(summary(modelo_bmi)$r.squared, 4))
+```
+
+Con R² = 0.0204, el IMC por sí solo explica una **proporción muy pequeña** de la variabilidad en costos médicos.
+
+## Costos médicos según sexo
+
+```{r medias-sexo}
+se %>%
+  group_by(sex) %>%
+  summarise(Media = round(mean(charges), 2)) %>%
+  mutate(sex = ifelse(sex == "male", "Hombre", "Mujer")) %>%
+  kable(col.names = c("Sexo", "Costo promedio (USD)")) %>%
+  kable_styling(full_width = FALSE)
+```
+
+La correlación entre sexo y costos es débil (r = 0.09), por lo que no resulta un factor relevante de forma independiente.
+
+## Costos médicos según cantidad de hijos
+
+```{r medias-hijos}
+se %>%
+  mutate(hijos_grupo = ifelse(children >= 3, "3+", as.character(children))) %>%
+  group_by(hijos_grupo) %>%
+  summarise(Media = round(mean(charges), 2)) %>%
+  arrange(hijos_grupo) %>%
+  kable(col.names = c("Hijos", "Costo promedio (USD)")) %>%
+  kable_styling(full_width = FALSE)
+```
+
+La correlación entre hijos y costos es débil — no explica los costos elevados.
+
+---
+
+# Perfil de Riesgo
+
+```{r perfil-riesgo}
+outliers_detalle <- se %>%
+  filter(charges > lim_sup) %>%
+  summarise(
+    Total         = n(),
+    Pct_fumadores = round(mean(smoker == "yes") * 100, 1),
+    Pct_obesos    = round(mean(bmi > 30) * 100, 1),
+    Edad_promedio = round(mean(age), 1)
+  )
+
+kable(outliers_detalle,
+      col.names = c("Total outliers", "% Fumadores", "% IMC > 30", "Edad promedio"),
+      caption   = "Características de los 26 outliers de costos médicos") %>%
+  kable_styling(full_width = FALSE)
+```
+
+El **100% de los outliers son fumadores** con IMC mayor a 30, y su edad promedio es de **51 años** — considerablemente mayor al promedio general de la muestra (39 años).
+
+> **Perfil de riesgo identificado:** persona fumadora, con obesidad (IMC > 30) y de mayor edad.
+
+---
+
+# Modelos de Regresión
+
+## Modelo 1: Solo IMC
+
+```{r modelo1}
+m1 <- lm(charges ~ bmi, data = se)
+cat("R²:", round(summary(m1)$r.squared, 4))
+```
+
+## Modelo 2: Solo fumador
+
+```{r modelo2}
+m2 <- lm(charges ~ smoker, data = se)
+cat("R²:", round(summary(m2)$r.squared, 4))
+```
+
+## Modelo 3: Interacción fumador × IMC
+
+```{r modelo3}
+m3 <- lm(charges ~ smoker * bmi, data = se)
+summary(m3)
+```
+
+El IMC aislado no es significativo (p = 0.585). Sin embargo, la **interacción `bmi:smokeryes` sí es altamente significativa**: en fumadores, cada punto adicional de IMC incrementa los costos en aproximadamente **$1.284**.
+
+```{r scatter-interaccion}
+se %>%
+  mutate(smoker_label = ifelse(smoker == "yes", "Fumador", "No fumador")) %>%
+  ggplot(aes(x = bmi, y = charges, color = smoker_label)) +
+  geom_point(alpha = 0.4, size = 1.8) +
+  geom_smooth(method = "lm", se = TRUE, linewidth = 1.5) +
+  geom_vline(xintercept = 30, linetype = "dashed", color = "#1E2761", alpha = 0.5) +
+  annotate("text", x = 30.5, y = 55000,
+           label = "IMC = 30\n(obesidad)", color = "#1E2761", size = 3.2, hjust = 0) +
+  scale_color_manual(values = c("Fumador" = "#D64045", "No fumador" = "#2E8B57")) +
+  scale_y_continuous(labels = scales::dollar_format()) +
+  labs(title    = "IMC vs. costos médicos según condición de fumador",
+       subtitle = "En fumadores, cada punto de IMC suma ~$1.284 en costos",
+       x = "IMC", y = "Costos médicos (USD)", color = NULL) +
+  theme_minimal()
+```
+
+## Modelo 4: Fumador × IMC + Edad
+
+```{r modelo4}
+m4 <- lm(charges ~ smoker * bmi + age, data = se)
+summary(m4)
+cat("\nR² Modelo 3:", round(summary(m3)$r.squared, 4))
+cat("\nR² Modelo 4:", round(summary(m4)$r.squared, 4))
+```
+
+Al agregar la edad, el R² sube de **0.7958 a 0.8825**. El coeficiente de `age` es de aproximadamente **$291 por año adicional**, de forma independiente al tabaquismo y el IMC.
+
+## Comparación de modelos
+
+```{r comparacion-modelos}
+tibble(
+  Modelo    = c("Solo IMC", "Solo fumador", "Fumador × IMC", "Fumador × IMC + Edad"),
+  Variables = c("bmi", "smoker", "smoker * bmi", "smoker * bmi + age"),
+  R2        = c(
+    round(summary(m1)$r.squared, 4),
+    round(summary(m2)$r.squared, 4),
+    round(summary(m3)$r.squared, 4),
+    round(summary(m4)$r.squared, 4)
+  )
+) %>%
+  kable(caption = "Evolución del R² por modelo") %>%
+  kable_styling(full_width = FALSE) %>%
+  row_spec(4, bold = TRUE, background = "#EBF1FF")
+```
+
+---
+
+# Comparación entre Regiones
+
+```{r comparacion-regiones}
+analisis_region <- function(data, region_nombre) {
+  sub    <- data %>% filter(region == region_nombre)
+  Q1r    <- quantile(sub$charges, 0.25)
+  Q3r    <- quantile(sub$charges, 0.75)
+  lim_r  <- Q3r + 1.5 * (Q3r - Q1r)
+  out    <- sub %>% filter(charges > lim_r)
+  tibble(
+    Region              = region_nombre,
+    Pct_outliers        = round(nrow(out) / nrow(sub) * 100, 2),
+    Pct_out_fumadores   = round(mean(out$smoker == "yes") * 100, 2),
+    Pct_out_obesos      = round(mean(out$bmi > 30) * 100, 2),
+    Pct_out_fum_y_obeso = round(mean(out$smoker == "yes" & out$bmi > 30) * 100, 2)
+  )
+}
+
+map_dfr(unique(df$region), ~analisis_region(df, .x)) %>%
+  kable(
+    col.names = c("Región", "% Outliers", "% Fumadores", "% IMC>30", "% Fum. y Obeso"),
+    caption   = "Comparación del perfil de outliers entre regiones"
+  ) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+```
+
+En todas las regiones, los costos más elevados corresponden a personas **fumadoras y con IMC mayor a 30**, lo que confirma la validez externa de los hallazgos.
+
+---
+
+# Conclusiones
+
+- La distribución de costos médicos presenta **fuerte asimetría positiva** (media > mediana), con un 7.14% de casos atípicos.
+- El **tabaquismo** es la variable con mayor asociación a los costos médicos (**r = 0.83**, R² = 0.69 en regresión simple).
+- El **IMC por sí solo** tiene escasa relación con los costos (R² = 0.02), pero al **interactuar con el tabaquismo**, cada punto de IMC extra incrementa los costos en **$1.284 en fumadores**.
+- Los **26 outliers** corresponden en su totalidad a personas fumadoras y obesas (IMC > 30), con una edad promedio de 51 años.
+- Agregar la **edad** al modelo mejora el ajuste de 0.80 a **0.88 (R²)**, con un efecto de +$291 por año adicional.
+- El mismo comportamiento se observa en las **4 regiones** del dataset.
+- El **perfil de mayor riesgo** identificado es: fumador, con obesidad y de edad relativamente avanzada.
+
+---
+
+# Referencias
+
+- Dataset: [Kaggle – Medical Cost Personal Datasets](https://www.kaggle.com/datasets/mirichoi0218/insurance)
+- Categorías IMC: [MedlinePlus – Índice de Masa Corporal](https://medlineplus.gov/spanish/ency/article/007196.htm)
+
