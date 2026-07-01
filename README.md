@@ -234,6 +234,6 @@ Estudiante de Licenciatura en Ciencia de Datos · Universidad CAECE
 
 <div align="center">
 
-*Proyecto desarrollado como trabajo final de Laboratorio de Datos I · Universidad CAECE 2025*
+*Proyecto desarrollado como trabajo final de Laboratorio de Datos I · Universidad CAECE 2026*
 
 </div>
