@@ -197,6 +197,11 @@ Un asegurado de la región southeast presenta costos extremos cuando combina:
 
 ---
 
+## 📄 Reporte completo
+[Ver análisis interactivo](https://EmiiFernandez.github.io/medical-cost-eda/report/EDA_Southeast.html)
+
+---
+
 ## 🤝 Contribución
 
 Las contribuciones son bienvenidas. Para proponer cambios:
